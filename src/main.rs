@@ -27,6 +27,12 @@ fn main() {
             )
                 .run_if(in_state(GameState::Playing)),
         )
+        
+        .insert_resource(ClearColor(Color::BLACK))
+        .insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
+        .init_state::<GameState>()
+        .init_resource::<Score>()
+        
         .add_systems(OnEnter(GameState::GameOver), game_over_setup_system)
         .run();
 }
@@ -53,6 +59,12 @@ enum GameState {
     GameOver,
 }
 
+#[derive(Component)]
+struct FireCoolDown(Timer);
+
+#[derive(Resource, Default)]
+struct Score(u32);
+
 fn setup_system(mut commands: Commands) {
     commands.spawn(Camera2d);
 
@@ -65,6 +77,7 @@ fn setup_system(mut commands: Commands) {
         Transform::default(),
         Player,
         Velocity(Vec2::ZERO),
+        FireCoolDown(Timer::from_seconds(0.2, TimerMode::Once)),
     ));
 }
 
@@ -99,10 +112,15 @@ fn movement_system(time: Res<Time>, mut query: Query<(&mut Transform, &Velocity)
 
 fn bullet_spawner_system(
     mut commands: Commands,
+    time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
-    player_transform: Single<&Transform, With<Player>>,
+    player_query: Single<(&Transform, &mut FireCoolDown), With<Player>>,
 ) {
-    if keyboard_input.just_pressed(KeyCode::Space) {
+    let  (player_transform, mut cooldown) = player_query.into_inner();
+    cooldown.0.tick(time.delta());
+    
+    if keyboard_input.just_pressed(KeyCode::Space) && cooldown.0.finished() {
+        cooldown.0.reset();
         commands.spawn((
             Sprite {
                 custom_size: Some(Vec2::new(8.0, 16.0)),
@@ -180,6 +198,7 @@ fn enemy_movement_system(
 
 fn collision_system(
     mut commands: Commands,
+    mut score: ResMut<Score>,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
     enemy_query: Query<(Entity, &Transform), With<Enemy>>
 ) {
@@ -192,7 +211,7 @@ fn collision_system(
             if distance < 16.0 {
                 commands.entity(bullet_entity).despawn();
                 commands.entity(enemy_entity).despawn();
-
+                score.0 += 100;
                 break;
             }
         }
