@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use crate::player::{Player, FireCoolDown};
 use crate::enemy::Enemy;
 use crate::ui::GameState;
+use crate::CameraShake;
 
 #[derive(Component)]
 struct Bullet;
@@ -55,6 +56,7 @@ fn bullet_movement_system(time: Res<Time>, mut query: Query<&mut Transform, With
 fn collision_system(
     mut commands: Commands,
     mut score: ResMut<Score>,
+    mut camera_query: Query<&mut CameraShake, With<Camera2d>>,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
     enemy_query: Query<(Entity, &Transform), With<Enemy>>
 ) {
@@ -65,6 +67,11 @@ fn collision_system(
                 commands.entity(bullet_entity).despawn();
                 commands.entity(enemy_entity).despawn();
                 score.0 += 100;
+
+                if let Ok(mut shake) = camera_query.single_mut() {
+                    shake.stress = (shake.stress + 0.4).min(1.0);
+                }
+                
                 break;
             }
         }
