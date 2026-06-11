@@ -70,6 +70,10 @@ rand = "0.9"
 
 ---
 
+## License
+
+Non-commercial use only. See [LICENSE](./LICENSE).
+
 ## What I learned
 
 Coming from Python/ML with no systems programming background, the sharpest edges were:
