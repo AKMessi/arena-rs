@@ -24,6 +24,7 @@ fn main() {
                 enemy_movement_system,
                 collision_system,
                 player_collision_system,
+                clamp_bounds_system,
             )
                 .run_if(in_state(GameState::Playing)),
         )
@@ -254,4 +255,9 @@ fn game_over_setup_system(mut commands: Commands) {
                 TextColor(Color::srgb(1.0, 0.0, 0.0)),
             ));
         });
+}
+
+fn clamp_bounds_system(mut player_transform: Single<&mut Transform, With<Player>>) {
+    player_transform.translation.x = player_transform.translation.x.clamp(-384.0, 384.0);
+    player_transform.translation.y = player_transform.translation.y.clamp(-284.0, 284.0);
 }
