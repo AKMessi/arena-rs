@@ -23,9 +23,10 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn spawn_player_system(mut commands: Commands) {
+fn spawn_player_system(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Sprite {
+            image: asset_server.load("textures/player.png"),
             custom_size: Some(Vec2::new(32.0, 32.0)),
             color: Color::WHITE,
             ..default()

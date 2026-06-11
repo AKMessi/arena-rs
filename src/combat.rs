@@ -39,6 +39,7 @@ fn bullet_spawner_system(
     time: Res<Time>,
     keyboard_input: Res<ButtonInput<KeyCode>>,
     player_query: Single<(&Transform, &mut FireCoolDown), With<Player>>,
+    asset_server: Res<AssetServer>,
 ) {
     let (player_transform, mut cooldown) = player_query.into_inner();
     cooldown.0.tick(time.delta());
@@ -47,6 +48,7 @@ fn bullet_spawner_system(
         cooldown.0.reset();
         commands.spawn((
             Sprite {
+                image: asset_server.load("textures/bullet.png"),
                 custom_size: Some(Vec2::new(8.0, 16.0)),
                 color: Color::srgb(1.0, 1.0, 0.0),
                 ..default()
@@ -110,7 +112,7 @@ fn collision_system(
 
 fn player_collision_system(
     mut next_state: ResMut<NextState<GameState>>,
-    player_transform: Single<&Transform, With<Player>>,
+    player_transform: Single<&Transform, (With<Player>, Without<Enemy>)>,
     enemy_query: Query<&Transform, With<Enemy>>,
 ) {
     let player_pos = player_transform.translation;

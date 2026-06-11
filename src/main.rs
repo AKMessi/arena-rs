@@ -10,6 +10,8 @@ use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 use ui::UiPlugin;
 
+use enemy::WaveManager;
+
 #[derive(Component, Default)]
 pub struct CameraShake {
     pub stress: f32,
@@ -25,7 +27,8 @@ fn main() {
             ..default()
         }))
         .insert_resource(ClearColor(Color::BLACK))
-        .add_systems(Startup, setup_camera)
+        .init_resource::<WaveManager>()
+        .add_systems(Startup, (setup_camera, setup_screen_filters))
         .add_systems(Update, camera_shake_system)
         .add_plugins((PlayerPlugin, EnemyPlugin, CombatPlugin, UiPlugin)) // Grouped registration
         .run();
@@ -33,6 +36,23 @@ fn main() {
 
 fn setup_camera(mut commands: Commands) {
     commands.spawn(Camera2d);
+}
+
+fn setup_screen_filters(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Percent(0.0),
+            right: Val::Percent(0.0),
+            top: Val::Percent(0.0),
+            bottom: Val::Percent(0.0),
+            ..default()
+        },
+        ImageNode {
+            image: asset_server.load("textures/vignette.png"),
+            ..default()
+        },
+    ));
 }
 
 fn camera_shake_system(

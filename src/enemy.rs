@@ -46,6 +46,7 @@ fn enemy_spawner_system(
     mut commands: Commands,
     time: Res<Time>,
     mut timer: ResMut<SpawnTimer>,
+    asset_server: Res<AssetServer>,
 ) {
     if timer.0.tick(time.delta()).just_finished() {
         let mut rng = rand::rng();
@@ -73,6 +74,7 @@ fn enemy_spawner_system(
 
         commands.spawn((
             Sprite {
+                image: asset_server.load("textures/enemy.png"),
                 custom_size: Some(Vec2::new(24.0, 24.0)),
                 color: Color::srgb(1.0, 0.0, 0.0),
                 ..default()
@@ -86,7 +88,7 @@ fn enemy_spawner_system(
 fn enemy_movement_system(
     time: Res<Time>,
     wave_manager: Res<WaveManager>,
-    player_transform: Single<&Transform, With<Player>>,
+    player_transform: Single<&Transform, (With<Player>, Without<Enemy>)>,
     mut enemy_query: Query<&mut Transform, With<Enemy>>,
 ) {
     let enemy_speed = 150.0 + (wave_manager.elapsed_secs * 2.0).min(170.0);
