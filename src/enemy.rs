@@ -27,8 +27,24 @@ impl Plugin for EnemyPlugin {
                     wave_difficulty_system,
                 )
                     .run_if(in_state(GameState::Playing)),
-            );
+            )
+            .add_systems(OnEnter(GameState::Playing), reset_enemy_system);
     }
+}
+
+fn reset_enemy_system(
+    mut commands: Commands,
+    mut wave_manager: ResMut<WaveManager>,
+    mut spawn_timer: ResMut<SpawnTimer>,
+    enemy_query: Query<Entity, With<Enemy>>,
+) {
+    for entity in &enemy_query {
+        commands.entity(entity).despawn();
+    }
+
+    wave_manager.elapsed_secs = 0.0;
+    spawn_timer.0.set_duration(std::time::Duration::from_secs_f32(1.0));
+    spawn_timer.0.reset();
 }
 
 fn wave_difficulty_system(

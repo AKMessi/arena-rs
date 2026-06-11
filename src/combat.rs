@@ -30,8 +30,26 @@ impl Plugin for CombatPlugin {
                    particle_system,
                 )
                    .run_if(in_state(GameState::Playing)),
-           );
+           )
+           .add_systems(OnEnter(GameState::Playing), reset_combat_system);
     }
+}
+
+fn reset_combat_system(
+    mut commands: Commands,
+    mut score: ResMut<Score>,
+    bullet_query: Query<Entity, With<Bullet>>,
+    particle_query: Query<Entity, With<Particle>>,
+) {
+    for entity in &bullet_query {
+        commands.entity(entity).despawn();
+    }
+
+    for entity in &particle_query {
+        commands.entity(entity).despawn();
+    }
+
+    score.0 = 0;
 }
 
 fn bullet_spawner_system(
