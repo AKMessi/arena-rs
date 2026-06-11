@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use crate::combat::{Score, HighScore};
 
 #[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
 pub enum GameState {
@@ -10,14 +11,53 @@ pub enum GameState {
 #[derive(Component)]
 pub struct GameOverUi;
 
+#[derive(Component)]
+pub struct HudText;
+
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<GameState>()
+            .add_systems(OnEnter(GameState::Playing), setup_hud_system)
+            .add_systems(Update, update_hud_system.run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(GameState::GameOver), game_over_setup_system)
             .add_systems(Update, game_over_input_system.run_if(in_state(GameState::GameOver)))
             .add_systems(OnEnter(GameState::Playing), game_over_cleanup_system);
+    }
+}
+
+fn setup_hud_system(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(16.0),
+            left: Val::Px(16.0),
+            flex_direction: FlexDirection::Column,
+            ..default()
+        },
+        GameOverUi, 
+    ))
+    .with_children(|parent| {
+        parent.spawn((
+            Text::new("Score: 0\nHigh Score: 0"),
+            TextFont {
+                font_size: 24.0,
+                ..default()
+            },
+            TextColor(Color::srgb(1.0, 1.0, 1.0)),
+            HudText,
+        ));
+    });
+}
+
+fn update_hud_system(
+    score: Res<Score>,
+    highscore: Res<HighScore>,
+    mut query: Query<&mut Text, With<HudText>>,
+) {
+    if let Ok(mut text) = query.single_mut() {
+        text.0 = format!("Score: {}\nHigh Score: {}", score.0, highscore.value);
     }
 }
 

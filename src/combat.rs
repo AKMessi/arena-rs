@@ -14,7 +14,7 @@ struct Bullet;
 pub struct Particle;
 
 #[derive(Resource, Default)]
-struct Score(pub u32);
+pub struct Score(pub u32);
 
 #[derive(Resource)]
 pub struct HighScore {
