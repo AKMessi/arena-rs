@@ -22,7 +22,10 @@ impl Plugin for EnemyPlugin {
         app.insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
             .add_systems(
                 Update, 
-                (enemy_spawner_system, enemy_movement_system)
+                (   enemy_spawner_system, 
+                    enemy_movement_system,
+                    wave_difficulty_system,
+                )
                     .run_if(in_state(GameState::Playing)),
             );
     }
