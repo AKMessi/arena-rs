@@ -1,37 +1,71 @@
+use crate::CameraShake;
+use crate::enemy::Enemy;
+use crate::player::{FireCoolDown, Player, Velocity};
+use crate::ui::GameState;
 use bevy::prelude::*;
 use rand::Rng;
-use crate::player::{FireCoolDown, Player, Velocity};
-use crate::enemy::Enemy;
-use crate::ui::GameState;
-use crate::CameraShake;
+use std::fs::File;
+use std::io::{Read, Write};
 
 #[derive(Component)]
 struct Bullet;
 
 #[derive(Component)]
-pub struct Particle {
-    pub lifetime: Timer,
-}
+pub struct Particle;
 
 #[derive(Resource, Default)]
-struct Score(u32);
+struct Score(pub u32);
+
+#[derive(Resource)]
+pub struct HighScore {
+    pub value: u32,
+    pub filepath: &'static str,
+}
+
+impl Default for HighScore {
+    fn default() -> Self {
+        let filepath = "highscore.txt";
+        let mut value = 0;
+
+        if let Ok(mut file) = File::open(filepath) {
+            let mut contents = String::new();
+            if file.read_to_string(&mut contents).is_ok() {
+                if let Ok(parsed) = contents.trim().parse::<u32>() {
+                    value = parsed;
+                }
+            }
+        }
+
+        HighScore { value, filepath }
+    }
+}
+
+impl HighScore {
+    pub fn save(&self) {
+        if let Ok(mut file) = File::create(self.filepath) {
+            let _ = write!(file, "{}", self.value);
+        }
+    }
+}
 
 pub struct CombatPlugin;
 
 impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Score>()
-           .add_systems(
-               Update,
-               (bullet_spawner_system, 
-                   bullet_movement_system, 
-                   collision_system, 
-                   player_collision_system,
-                   particle_system,
+            .init_resource::<HighScore>()
+            .add_systems(
+                Update,
+                (
+                    bullet_spawner_system,
+                    bullet_movement_system,
+                    collision_system,
+                    player_collision_system,
+                    particle_system,
                 )
-                   .run_if(in_state(GameState::Playing)),
-           )
-           .add_systems(OnEnter(GameState::Playing), reset_combat_system);
+                    .run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(OnEnter(GameState::Playing), reset_combat_system);
     }
 }
 
@@ -44,11 +78,9 @@ fn reset_combat_system(
     for entity in &bullet_query {
         commands.entity(entity).despawn();
     }
-
     for entity in &particle_query {
         commands.entity(entity).despawn();
     }
-
     score.0 = 0;
 }
 
@@ -89,11 +121,13 @@ fn collision_system(
     mut score: ResMut<Score>,
     mut camera_query: Query<&mut CameraShake, With<Camera2d>>,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
-    enemy_query: Query<(Entity, &Transform), With<Enemy>>
+    enemy_query: Query<(Entity, &Transform), With<Enemy>>,
 ) {
     for (bullet_entity, bullet_transform) in &bullet_query {
         for (enemy_entity, enemy_transform) in &enemy_query {
-            let distance = bullet_transform.translation.distance(enemy_transform.translation);
+            let distance = bullet_transform
+                .translation
+                .distance(enemy_transform.translation);
             if distance < 16.0 {
                 commands.entity(bullet_entity).despawn();
                 commands.entity(enemy_entity).despawn();
@@ -116,12 +150,10 @@ fn collision_system(
                         },
                         Transform::from_translation(enemy_transform.translation),
                         Velocity(velocity_vector),
-                        Particle {
-                            lifetime: Timer::from_seconds(rng.random_range(0.2..0.5), TimerMode::Once)
-                        },
+                        Particle,
                     ));
                 }
-                
+
                 break;
             }
         }
@@ -130,6 +162,8 @@ fn collision_system(
 
 fn player_collision_system(
     mut next_state: ResMut<NextState<GameState>>,
+    score: Res<Score>,
+    mut highscore: ResMut<HighScore>,
     player_transform: Single<&Transform, (With<Player>, Without<Enemy>)>,
     enemy_query: Query<&Transform, With<Enemy>>,
 ) {
@@ -137,6 +171,12 @@ fn player_collision_system(
     for enemy_transform in &enemy_query {
         let distance = player_pos.distance(enemy_transform.translation);
         if distance < 24.0 {
+            if score.0 > highscore.value {
+                highscore.value = score.0;
+                highscore.save(); // Hard-flushes out to the local file system
+                info!("New Personal Best Saved! Score: {}", highscore.value);
+            }
+
             next_state.set(GameState::GameOver);
             break;
         }
@@ -146,18 +186,17 @@ fn player_collision_system(
 fn particle_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut particle_query: Query<(Entity, &mut Transform, &Velocity, &mut Particle, &mut Sprite)>,
+    mut particle_query: Query<(Entity, &mut Transform, &Velocity, &mut Sprite), With<Particle>>,
 ) {
-    for (entity, mut transform, velocity, mut particle, mut sprite) in &mut particle_query {
-        particle.lifetime.tick(time.delta());
-
-        if particle.lifetime.finished() {
-            commands.entity(entity).despawn();
-        } else {
-            transform.translation += velocity.0.extend(0.0) * time.delta_secs();
-            let life_percentage = 1.0 - particle.lifetime.fraction();
-            let new_scale = 6.0 * life_percentage;
-            sprite.custom_size = Some(Vec2::new(new_scale, new_scale));
+    for (entity, mut transform, velocity, mut sprite) in &mut particle_query {
+        transform.translation += velocity.0.extend(0.0) * time.delta_secs();
+        if let Some(size) = sprite.custom_size {
+            let next_size = size.x - 12.0 * time.delta_secs();
+            if next_size <= 0.1 {
+                commands.entity(entity).despawn();
+            } else {
+                sprite.custom_size = Some(Vec2::new(next_size, next_size));
+            }
         }
     }
 }
