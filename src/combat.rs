@@ -106,6 +106,11 @@ fn bullet_spawner_system(
             Transform::from_translation(player_transform.translation),
             Bullet,
         ));
+
+        commands.spawn((
+            AudioPlayer(asset_server.load::<AudioSource>("audio/shoot.ogg")),
+            PlaybackSettings::DESPAWN,
+        ));
     }
 }
 
@@ -122,6 +127,7 @@ fn collision_system(
     mut camera_query: Query<&mut CameraShake, With<Camera2d>>,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
     enemy_query: Query<(Entity, &Transform), With<Enemy>>,
+    asset_server: Res<AssetServer>,
 ) {
     for (bullet_entity, bullet_transform) in &bullet_query {
         for (enemy_entity, enemy_transform) in &enemy_query {
@@ -136,6 +142,11 @@ fn collision_system(
                 if let Ok(mut shake) = camera_query.single_mut() {
                     shake.stress = (shake.stress + 0.4).min(1.0);
                 }
+
+                commands.spawn((
+                    AudioPlayer(asset_server.load::<AudioSource>("audio/explode.ogg")),
+                    PlaybackSettings::DESPAWN, // Clean garbage collection
+                ));
                 let mut rng = rand::rng();
                 for _ in 0..12 {
                     let angle = rng.random_range(0.0..std::f32::consts::TAU);
