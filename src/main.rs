@@ -23,8 +23,11 @@ fn main() {
                 enemy_spawner_system,
                 enemy_movement_system,
                 collision_system,
-            ),
+                player_collision_system,
+            )
+                .run_if(in_state(GameState::Playing)),
         )
+        .add_systems(OnEnter(GameState::GameOver), game_over_setup_system)
         .run();
 }
 
@@ -42,6 +45,13 @@ struct Enemy;
 
 #[derive(Resource)]
 struct SpawnTimer(Timer);
+
+#[derive(States, Debug, Clone, Copy, Eq, PartialEq, Hash, Default)]
+enum GameState {
+    #[default]
+    Playing,
+    GameOver,
+}
 
 fn setup_system(mut commands: Commands) {
     commands.spawn(Camera2d);
@@ -187,4 +197,42 @@ fn collision_system(
             }
         }
     }
+}
+
+fn player_collision_system(
+    mut next_state: ResMut<NextState<GameState>>,
+    player_transform: Single<&Transform, With<Player>>,
+    enemy_query: Query<(Entity, &Transform), With<Enemy>>,
+) {
+    let player_pos = player_transform.translation;
+
+    for enemy_transform in &enemy_query {
+        let distance = player_pos.distance(enemy_transform.1.translation);
+
+        if distance < 24.0 {
+            next_state.set(GameState::GameOver);
+            break;
+        }
+    }
+}
+
+fn game_over_setup_system(mut commands: Commands) {
+    commands
+        .spawn(Node {
+            width: Val::Percent(100.0),
+            height: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            ..default()
+        })
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("GAME OVER"),
+                TextFont {
+                    font_size: 64.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.0, 0.0)),
+            ));
+        });
 }
