@@ -19,6 +19,16 @@ Enemies spawn from all four screen edges and track toward you. Spawn rate and sp
 
 ---
 
+## Download
+
+| Platform | Link |
+|---|---|
+| Windows | [arena-rs-windows.zip](https://github.com/AKMessi/arena-rs/releases/latest/download/arena-rs-windows.zip) |
+| macOS | [arena-rs-macos.zip](https://github.com/AKMessi/arena-rs/releases/latest/download/arena-rs-macos.zip) |
+| Linux | [arena-rs-linux.zip](https://github.com/AKMessi/arena-rs/releases/latest/download/arena-rs-linux.zip) |
+
+Unzip and run the binary. No install needed. `assets/` folder must stay next to the executable.
+
 ## Architecture
 
 Five plugins, each owning its own entities and cleanup logic.
@@ -89,3 +99,5 @@ Coming from Python/ML with no systems programming background, the sharpest edges
 ---
 
 Part of a Rust learnmaxx series: [tiny-autograd-rs](https://github.com/AKMessi/tiny-autograd-rs) → [RustAttention](https://github.com/AKMessi/RustAttention) → arena-rs
+
+![Downloads](https://img.shields.io/github/downloads/AKMessi/arena-rs/total?style=flat-square&color=orange)
