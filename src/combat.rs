@@ -1,11 +1,17 @@
 use bevy::prelude::*;
-use crate::player::{Player, FireCoolDown};
+use rand::Rng;
+use crate::player::{FireCoolDown, Player, Velocity};
 use crate::enemy::Enemy;
 use crate::ui::GameState;
 use crate::CameraShake;
 
 #[derive(Component)]
 struct Bullet;
+
+#[derive(Component)]
+pub struct Particle {
+    pub lifetime: Timer,
+}
 
 #[derive(Resource, Default)]
 struct Score(u32);
@@ -17,7 +23,12 @@ impl Plugin for CombatPlugin {
         app.init_resource::<Score>()
            .add_systems(
                Update,
-               (bullet_spawner_system, bullet_movement_system, collision_system, player_collision_system)
+               (bullet_spawner_system, 
+                   bullet_movement_system, 
+                   collision_system, 
+                   player_collision_system,
+                   particle_system,
+                )
                    .run_if(in_state(GameState::Playing)),
            );
     }
@@ -71,6 +82,25 @@ fn collision_system(
                 if let Ok(mut shake) = camera_query.single_mut() {
                     shake.stress = (shake.stress + 0.4).min(1.0);
                 }
+                let mut rng = rand::rng();
+                for _ in 0..12 {
+                    let angle = rng.random_range(0.0..std::f32::consts::TAU);
+                    let speed = rng.random_range(120.0..280.0);
+                    let velocity_vector = Vec2::new(angle.cos(), angle.sin()) * speed;
+
+                    commands.spawn((
+                        Sprite {
+                            custom_size: Some(Vec2::new(6.0, 6.0)),
+                            color: Color::srgb(1.0, 0.6, 0.1),
+                            ..default()
+                        },
+                        Transform::from_translation(enemy_transform.translation),
+                        Velocity(velocity_vector),
+                        Particle {
+                            lifetime: Timer::from_seconds(rng.random_range(0.2..0.5), TimerMode::Once)
+                        },
+                    ));
+                }
                 
                 break;
             }
@@ -89,6 +119,25 @@ fn player_collision_system(
         if distance < 24.0 {
             next_state.set(GameState::GameOver);
             break;
+        }
+    }
+}
+
+fn particle_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut particle_query: Query<(Entity, &mut Transform, &Velocity, &mut Particle, &mut Sprite)>,
+) {
+    for (entity, mut transform, velocity, mut particle, mut sprite) in &mut particle_query {
+        particle.lifetime.tick(time.delta());
+
+        if particle.lifetime.finished() {
+            commands.entity(entity).despawn();
+        } else {
+            transform.translation += velocity.0.extend(0.0) * time.delta_secs();
+            let life_percentage = 1.0 - particle.lifetime.fraction();
+            let new_scale = 6.0 * life_percentage;
+            sprite.custom_size = Some(Vec2::new(new_scale, new_scale));
         }
     }
 }
