@@ -11,16 +11,6 @@ fn main() {
             ..default()
         }))
         .insert_resource(ClearColor(Color::BLACK))
-        .add_systems(Startup, setup_system)
-        .add_systems(
-            Update,
-            (
-                player_input_system,
-                movement_system,
-                bullet_spawner_system,
-                bullet_movement_system,
-            ),
-        )
         .insert_resource(SpawnTimer(Timer::from_seconds(1.0, TimerMode::Repeating)))
         .add_systems(Startup, setup_system)
         .add_systems(
@@ -32,6 +22,7 @@ fn main() {
                 bullet_movement_system,
                 enemy_spawner_system,
                 enemy_movement_system,
+                collision_system,
             ),
         )
         .run();
@@ -174,5 +165,26 @@ fn enemy_movement_system(
         let enemy_pos = transform.translation.xy();
         let direction = (player_pos - enemy_pos).normalize_or_zero();
         transform.translation += direction.extend(0.0) * enemy_speed * time.delta_secs();
+    }
+}
+
+fn collision_system(
+    mut commands: Commands,
+    bullet_query: Query<(Entity, &Transform), With<Bullet>>,
+    enemy_query: Query<(Entity, &Transform), With<Enemy>>
+) {
+    for (bullet_entity, bullet_transform) in &bullet_query {
+        for (enemy_entity, enemy_transform) in &enemy_query {
+            let distance = bullet_transform
+                .translation
+                .distance(enemy_transform.translation);
+
+            if distance < 16.0 {
+                commands.entity(bullet_entity).despawn();
+                commands.entity(enemy_entity).despawn();
+
+                break;
+            }
+        }
     }
 }
